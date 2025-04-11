@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundSeeker - Always Listening Music Recognition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            transform: translateX(150%);
+            transition: transform 0.3s ease-out;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .lyrics-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .lyrics-content {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .waveform {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .wave-bar {
+            width: 4px;
+            height: 10px;
+            background-color: #3b82f6;
+            border-radius: 2px;
+            transition: height 0.2s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div class="flex items-center">
+                <i class="fas fa-music text-blue-500 text-3xl mr-3"></i>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">SoundSeeker</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="historyBtn" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition">
+                    <i class="fas fa-history text-blue-400"></i>
+                </button>
+                <button id="settingsBtn" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition">
+                    <i class="fas fa-cog text-blue-400"></i>
+                </button>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="flex flex-col items-center justify-center py-12">
+            <div class="relative mb-8">
+                <div class="w-64 h-64 rounded-full bg-gradient-to-br from-blue-900 to-purple-900 flex items-center justify-center pulse-animation">
+                    <div class="w-56 h-56 rounded-full bg-gray-900 flex items-center justify-center">
+                        <div class="w-48 h-48 rounded-full bg-gradient-to-br from-blue-800 to-purple-800 flex items-center justify-center">
+                            <i class="fas fa-music text-5xl text-white opacity-70"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">
+                    Always Listening
+                </div>
+            </div>
+            
+            <!-- Waveform Visualization -->
+            <div class="waveform w-full max-w-md mb-8">
+                <div class="wave-bar" style="height: 20px;"></div>
+                <div class="wave-bar" style="height: 35px;"></div>
+                <div class="wave-bar" style="height: 50px;"></div>
+                <div class="wave-bar" style="height: 65px;"></div>
+                <div class="wave-bar" style="height: 40px;"></div>
+                <div class="wave-bar" style="height: 25px;"></div>
+                <div class="wave-bar" style="height: 45px;"></div>
+                <div class="wave-bar" style="height: 60px;"></div>
+                <div class="wave-bar" style="height: 30px;"></div>
+                <div class="wave-bar" style="height: 50px;"></div>
+                <div class="wave-bar" style="height: 20px;"></div>
+            </div>
+            
+            <h2 class="text-xl font-semibold mb-2">Listening for music...</h2>
+            <p class="text-gray-400 mb-6">SoundSeeker works in the background to identify songs around you</p>
+            
+            <div class="flex space-x-4">
+                <button id="pauseBtn" class="px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-full font-medium flex items-center">
+                    <i class="fas fa-pause mr-2"></i> Pause
+                </button>
+                <button id="lyricsBtn" class="px-6 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-medium flex items-center">
+                    <i class="fas fa-align-left mr-2"></i> Show Lyrics
+                </button>
+            </div>
+        </main>
+        
+        <!-- Recently Identified Section -->
+        <section class="mt-12">
+            <h3 class="text-lg font-semibold mb-4 flex items-center">
+                <i class="fas fa-clock-rotate-left mr-2 text-blue-400"></i> Recently Identified
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Sample recent songs -->
+                <div class="bg-gray-800 rounded-lg p-4 flex items-center hover:bg-gray-700 transition cursor-pointer">
+                    <div class="w-16 h-16 bg-blue-900 rounded-md flex items-center justify-center mr-4">
+                        <i class="fas fa-music text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium">Blinding Lights</h4>
+                        <p class="text-gray-400 text-sm">The Weeknd</p>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 flex items-center hover:bg-gray-700 transition cursor-pointer">
+                    <div class="w-16 h-16 bg-purple-900 rounded-md flex items-center justify-center mr-4">
+                        <i class="fas fa-music text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium">Levitating</h4>
+                        <p class="text-gray-400 text-sm">Dua Lipa</p>
+                    </div>
+                </div>
+                <div class="bg-gray-800 rounded-lg p-4 flex items-center hover:bg-gray-700 transition cursor-pointer">
+                    <div class="w-16 h-16 bg-green-900 rounded-md flex items-center justify-center mr-4">
+                        <i class="fas fa-music text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium">Stay</h4>
+                        <p class="text-gray-400 text-sm">The Kid LAROI, Justin Bieber</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <!-- Notification -->
+    <div id="notification" class="notification w-80 bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+        <div class="flex items-start p-4">
+            <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                    <i class="fas fa-music text-white text-xl"></i>
+                </div>
+            </div>
+            <div class="ml-3 flex-1">
+                <h4 class="font-semibold">Song Identified!</h4>
+                <p class="text-sm text-gray-300 mt-1">"As It Was" by Harry Styles</p>
+                <div class="mt-2 flex space-x-2">
+                    <button class="text-xs bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded">
+                        <i class="fas fa-play mr-1"></i> Play
+                    </button>
+                    <button class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded">
+                        <i class="fas fa-align-left mr-1"></i> Lyrics
+                    </button>
+                </div>
+            </div>
+            <button id="closeNotification" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Lyrics Modal -->
+    <div id="lyricsModal" class="lyrics-modal">
+        <div class="container mx-auto p-4 max-w-2xl">
+            <div class="lyrics-content p-6 relative">
+                <button id="closeLyrics" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+                
+                <div class="flex items-center mb-6">
+                    <div class="w-20 h-20 bg-blue-900 rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-music text-2xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">Blinding Lights</h2>
+                        <p class="text-gray-400">The Weeknd</p>
+                    </div>
+                </div>
+                
+                <div class="lyrics-text text-center text-gray-300 leading-relaxed">
+                    <p class="mb-4">I've been tryna call</p>
+                    <p class="mb-4">I've been on my own for long enough</p>
+                    <p class="mb-4">Maybe you can show me how to love, maybe</p>
+                    <p class="mb-4">I'm going through withdrawals</p>
+                    <p class="mb-4">You don't even have to do too much</p>
+                    <p class="mb-4">You can turn me on with just a touch, baby</p>
+                    <p class="mb-4">I look around and</p>
+                    <p class="mb-4">Sin City's cold and empty (Oh)</p>
+                    <p class="mb-4">No one's around to judge me (Oh)</p>
+                    <p class="mb-4">I can't see clearly when you're gone</p>
+                </div>
+                
+                <div class="mt-8 pt-4 border-t border-gray-700 flex justify-between items-center">
+                    <div class="flex items-center">
+                        <i class="fas fa-heart text-red-500 mr-2"></i>
+                        <span>2.4M likes</span>
+                    </div>
+                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-full">
+                        <i class="fas fa-share-alt mr-2"></i> Share Lyrics
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50">
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gray-800 rounded-lg w-full max-w-md">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Settings</h3>
+                    <button id="closeSettings" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="font-medium mb-2">Background Listening</h4>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" class="sr-only peer" checked>
+                            <div class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ms-3 text-sm font-medium">Always listen for music</span>
+                        </label>
+                        <p class="text-xs text-gray-400 mt-1">SoundSeeker will work in the background to identify songs</p>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium mb-2">Notifications</h4>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" class="sr-only peer" checked>
+                            <div class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ms-3 text-sm font-medium">Show song notifications</span>
+                        </label>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-medium mb-2">Auto Lyrics</h4>
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" class="sr-only peer">
+                            <div class="relative w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <span class="ms-3 text-sm font-medium">Show lyrics popup</span>
+                        </label>
+                        <p class="text-xs text-gray-400 mt-1">Automatically show lyrics when a song is identified</p>
+                    </div>
+                    
+                    <div class="pt-4 border-t border-gray-700">
+                        <button class="w-full py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium">
+                            Save Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Simulate song detection with notifications
+        document.addEventListener('DOMContentLoaded', function() {
+            // Show notification after 3 seconds to simulate song detection
+            setTimeout(showNotification, 3000);
+            
+            // Waveform animation
+            animateWaveform();
+            
+            // Button event listeners
+            document.getElementById('lyricsBtn').addEventListener('click', showLyricsModal);
+            document.getElementById('closeLyrics').addEventListener('click', hideLyricsModal);
+            document.getElementById('closeNotification').addEventListener('click', hideNotification);
+            document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
+            document.getElementById('closeSettings').addEventListener('click', hideSettingsModal);
+            document.getElementById('pauseBtn').addEventListener('click', toggleListening);
+            
+            // Clicking anywhere outside modals closes them
+            document.addEventListener('click', function(e) {
+                if (e.target.id === 'lyricsModal') hideLyricsModal();
+                if (e.target.id === 'settingsModal') hideSettingsModal();
+            });
+        });
+        
+        function showNotification() {
+            const notification = document.getElementById('notification');
+            notification.classList.add('show');
+            
+            // Auto-hide after 8 seconds
+            setTimeout(hideNotification, 8000);
+        }
+        
+        function hideNotification() {
+            document.getElementById('notification').classList.remove('show');
+        }
+        
+        function showLyricsModal() {
+            document.getElementById('lyricsModal').style.display = 'block';
+        }
+        
+        function hideLyricsModal() {
+            document.getElementById('lyricsModal').style.display = 'none';
+        }
+        
+        function showSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+        
+        function hideSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+        
+        function toggleListening() {
+            const btn = document.getElementById('pauseBtn');
+            const icon = btn.querySelector('i');
+            const mainCircle = document.querySelector('.pulse-animation');
+            
+            if (btn.textContent.includes('Pause')) {
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i> Resume';
+                mainCircle.classList.remove('pulse-animation');
+                mainCircle.style.opacity = '0.5';
+            } else {
+                btn.innerHTML = '<i class="fas fa-pause mr-2"></i> Pause';
+                mainCircle.classList.add('pulse-animation');
+                mainCircle.style.opacity = '1';
+            }
+        }
+        
+        function animateWaveform() {
+            const bars = document.querySelectorAll('.wave-bar');
+            
+            setInterval(() => {
+                bars.forEach(bar => {
+                    const randomHeight = Math.floor(Math.random() * 60) + 5;
+                    bar.style.height = `${randomHeight}px`;
+                });
+            }, 200);
+        }
+        
+        // Simulate periodic song detection
+        setInterval(() => {
+            if (Math.random() > 0.7) { // 30% chance to detect a song
+                showNotification();
+            }
+        }, 15000); // Every 15 seconds
+    </script>
+</body>
+</html>
